@@ -1,20 +1,5 @@
 #!/usr/bin/perl -w
 
-
-#Change Log
-#June 1, 2011 Added removeOldSymLinks sub and supporting script option
-#June 1, 2011 Added makeUniqueFilename sub 
-#June 3, 2011 Added change directory to removeOldSymLinks sub
-#July 1, 2011 Updated args to mythlink to point to new source code distribution
-
-
-#Todo
-#01 Make global var for video directory
-#02 When naming a file using yearday and looking for existing yearday file and the subtitle is
-#different there exists the possibility of two files haveing the same yearday thus messing
-#up program identification on Boxee.
-#03 The args to the mythlink system call are source code dependent and should not be.
-
 use Time::localtime;
 use Getopt::Long;
 use Time::Local;
@@ -23,12 +8,11 @@ use Data::Dumper;
 use JcUtils::Logger;
 use JcUtils::FileDB;
 
-
-our $dataBase = "/tmp/mythShowIdMap";
-our $logFile = "/tmp/mythLinkLog";
-our $destDir = "/media/Dvr/Cisco";
-#our $tvdbDb = "/tmp/tvdb/.tvdb.db";
-our $tvdbDb = "/tmp/testdir/.tvdb.db";
+our $basedir = "/var/MythShowLink/";
+our $dataBase = $basedir . "mythShowIdMap";
+our $logFile = $basedir . "mythLinkLog";
+our $destDir;
+our $tvdbDb = $basedir . ".tvdb.db";
 our $chanid;
 our $starttime;
 our $usage;
@@ -48,7 +32,8 @@ GetOptions('chanid=s'		=> \$chanid,
 	    'title=s'		=> \$title,
 	    'subtitle=s'	=> \$subtitle,
 	    'verbose'		=> \$verbose,
-	    'rmsyms'		=> \$rmsyms
+	    'rmsyms'		=> \$rmsyms,
+	    'destdir=s'		=> \$destDir
 	  );
 
 if ($usage) {
@@ -73,6 +58,9 @@ options:
 
 --rmsyms
     Remove broken symbolic links as caused by this script; nothing else.
+    
+--destdir
+	The destination directory, or link to, directory.
 
 --help
 
@@ -81,6 +69,11 @@ EOF
 exit;
 }
 
+#check dependencies
+#check basedir
+unless (-e $basedir) {
+	mkdir $basedir, 0775 or die "Could not create $basedir which is needed for MythShowLink Files $! \n";
+}
 
 my $logger = JcUtils::Logger::new($logFile, 10000);
 
@@ -92,14 +85,20 @@ if (defined($rmsyms)) {
   exit;
 }
 
-
 #Check if all arguments have been specified
-if (!defined($chanid) || !defined($starttime) || !defined($title) || !defined($subtitle)) {
+if (!defined($chanid) || !defined($starttime) || !defined($title) || !defined($subtitle) || !defined($destDir)) {
   $logger->log("All arguments were not defined");
   die "All arguments must be defined";
 }
 
-#check dependencies
+#Does the destination directory exist, make it if we can
+unless (-e $destDir) {
+	unless (mkdir $destDir, 0775) {
+		$logger->error->log("Could not create $destDir $!");
+		die "Could not create $destDir $! \n";
+	}
+	$logger->warn->log("Had to create destination directory $destDir");
+}
 
 #Create year day for filename, should it be needed
 $year = substr($starttime, 0, 4);
@@ -110,7 +109,8 @@ $YearDayNumber = localtime($showtime)->yday();
 
 #before we create a TVDB object we need to make sure that the db can be created in the specified directory. 
 unless (-e $tvdbDb){
-	$logger->warn->log("The TVDB db: $tvdbDb needs to be created, for some reason this takes a long time");
+	$logger->warn->log("The TVDB db: $tvdbDb needs to be created, because of a bug in TVDB::API this takes a long time");
+	print "The TVDB db: $tvdbDb needs to be created, because of a bug in TVDB::API this takes a long time \n";
 	my @tokens = split(/\//, $tvdbDb);
 	pop(@tokens);
 	my $dir;
