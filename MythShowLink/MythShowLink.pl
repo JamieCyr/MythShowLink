@@ -148,7 +148,7 @@ if ($showid > 1) {
 
 if ($seasonEpisode[0] < 1 || $seasonEpisode[1] < 1) {
   $logger->log("Using year day to name $title, $subtitle");
-  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . "." . $year . "." . $month . "." . $day . "." . $subtitle. ".mpg";
+  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . "." . $subtitle. ".mpg";
   if (-e $name) {
     $logger->log("$name already exists, making uuid");
     $uuid = makeUniqueFilename();
@@ -229,11 +229,11 @@ sub getShowId {
 sub makeUniqueFilename {
 
   $uuid = 0;
-  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $year . "." . $month . "." . $day . "." . $subtitle. ".mpg";
+  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
   while (-e $name) {
     $logger->log("$name already exists, will increment \n");
     $uuid++;
-    $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $year . "." . $month . "." . $day . "." . $subtitle. ".mpg";
+    $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
   }
     return $uuid;
 }
