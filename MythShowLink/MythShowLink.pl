@@ -76,7 +76,7 @@ unless (-e $basedir) {
 	mkdir $basedir, 0775 or die "Could not create $basedir which is needed for MythShowLink Files $! \n";
 }
 
-my $logger = JcUtils::Logger::new($logFile, 10000);
+my $logger = JcUtils::Logger::new($logFile, 100000);
 
 #Let's see if we only want to remove broken symbolic links
 if (defined($rmsyms)) {
