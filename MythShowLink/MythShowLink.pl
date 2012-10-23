@@ -10,6 +10,7 @@ use JcUtils::FileDB;
 
 our $basedir = "/var/MythShowLink/";
 our $dataBase = $basedir . "mythShowIdMap";
+our $NoEntryDB = $basedir . "NoIMDBEntryDB";
 our $logFile = $basedir . "mythLinkLog";
 our $destDir;
 our $tvdbDb = $basedir . ".tvdb.db";
@@ -128,6 +129,7 @@ our $tvdb = TVDB::API::new($apikey, $language, $tvdbDb);
 
 #Create the DB object
 our $db = JcUtils::FileDB::new($logger, $dataBase);
+our $noentrydb = JcUtils::FileDB::new($logger, $NoEntryDB);
 
 #Announce we're starting this process
 $logger->log("Starting TVDB search for $title, $subtitle");
@@ -136,9 +138,13 @@ $logger->log("Starting TVDB search for $title, $subtitle");
 $showid = getShowId($title);
 if ($showid > 1) {
   $logger->log("Found $showid for $title in local corrected DB");
-  $title = $tvdb->getSeriesName($showid, 0);
-  if (!defined($title)) {
-    $logger->log("TVDB did not return a valid showid for $title");
+  my $tmpTitle;
+  $tmpTitle = $tvdb->getSeriesName($showid, 0);
+  if (!defined($tmpTitle)) {
+    $logger->log("TVDB did not return a valid title for $showid");
+  }
+  else {
+  	$title = $tmpTitle;
   }
 }
 
@@ -190,7 +196,7 @@ exit;
 #returned form the TVDB showid.
 #Args: title
 #Return: showid, if found
-#Return: -1, if not found
+#Return: 0, if not found
 sub getShowId {
 
   my $showName = $_[0];
@@ -290,8 +296,13 @@ sub getSeasonEpisode {
   my $subtitle = $_[1];
   my $numepisodes;
   my $numseasons;
+  
+  if (!defined($subtitle)) {
+  	$logger->warn->log("Subtitle is empty, no reason to look any further");
+  	return (0, 0)
+  }
 
-  #turn subtitle to all loswercase
+  #turn subtitle to all lowercase
   $subtitle =~ tr/A-Z/a-z/;
 
   $numseasons = $tvdb->getMaxSeason($title, 0);
@@ -299,14 +310,17 @@ sub getSeasonEpisode {
   #getMaxEpisode will return undefined for the year and the loop will exit; however, this is
   #probably not the correct behavior as, I suppose, a particular season could have no episodes.
   if (!defined($numseasons)) {
-  	$db->create({
-  		'title'	=> $title,
-  		'subTitle'	=> $subtitle,
-  		'showId'	=> 0
-  	});
-    $logger->log("TVDB did not return any season number for $title");
-    $logger->log("Possible name mismatch between MythTV and the TVDB, check it out and add showId enty to $dataBase");
-    return(-1, -1);
+  	my @results;
+ 	@results = $db->find('title', $title);
+  	unless (@results >= 1 ) {
+	  	$db->create({
+	  		'title'	=> $title,
+	  		'showId'	=> 0
+	  	});
+  	}
+	$logger->warn->log("TVDB did not return any seasons for $title");
+    $logger->warn->log("Possible name mismatch between MythTV and the TVDB, check it out and add showId enty to $dataBase");
+	return(0, 0);
   }
 
   $logger->log("Looking for $title, $subtitle in all $numseasons seasons in TVDB");
@@ -317,18 +331,18 @@ sub getSeasonEpisode {
       $logger->log("TVDB return no episodes for $title");
       last;
     }
-    #log("Season $i has $numepisodes episodes");
+
     for ($j = 1; $j <= $numepisodes; $j++) {
       $episodename = $tvdb->getEpisodeName($title, $i, $j, 0);
       if (!defined($episodename)) {
-	$logger->log("TVDB return nothing for $title Season $i episode $j");
+		$logger->log("TVDB return nothing for $title Season $i episode $j");
       }
       else {
-	$episodename =~ tr/A-Z/a-z/;
-	if ($episodename eq $subtitle) {
-	  $logger->log("Found: $episodename in the TVDB");
-	  return($i, $j);
-	}
+		$episodename =~ tr/A-Z/a-z/;
+		if ($episodename eq $subtitle) {
+		  $logger->log("Found: $episodename in the TVDB");
+		  return($i, $j);
+		}
       }
     }
   }
@@ -336,12 +350,12 @@ sub getSeasonEpisode {
   $logger->log("Could not find $title, $subtitle in the TVDB");
   
   #Let's make an entry in the DB so we can check TVDB at another time.
-  $db->create({
+  $noentrydb->create({
   		'title'	=> $title,
   		'subTitle'	=> $subtitle,
   		'showId'	=> 0
   	});
-  return (-1, -1);
+  return (0, 0);
 
 }
 
