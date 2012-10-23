@@ -158,10 +158,10 @@ if ($seasonEpisode[0] < 1 || $seasonEpisode[1] < 1) {
   if (-e $name) {
     $logger->log("$name already exists, making uuid");
     $uuid = makeUniqueFilename();
-    $fileformat = "%T." . "S0" . "E".$YearDayNumber . $uuid . ".%Y.%m.%d" . ".%S";
+    $fileformat = "%T." . "S0" . "E".$YearDayNumber . $uuid . ".%S";
   }
   else {
-    $fileformat = "%T." . "S0" . "E".$YearDayNumber . ".%Y.%m.%d" . ".%S";
+    $fileformat = "%T." . "S0" . "E".$YearDayNumber . ".%S";
   }
 }
 else {
