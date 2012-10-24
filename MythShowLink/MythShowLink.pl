@@ -76,7 +76,7 @@ unless (-e $basedir) {
 	mkdir $basedir, 0775 or die "Could not create $basedir which is needed for MythShowLink Files $! \n";
 }
 
-my $logger = JcUtils::Logger::new($logFile, 100000);
+my $logger = JcUtils::Logger::new($logFile, 1000000);
 
 #Let's see if we only want to remove broken symbolic links
 if (defined($rmsyms)) {
@@ -154,14 +154,14 @@ if ($showid > 1) {
 
 if ($seasonEpisode[0] < 1 || $seasonEpisode[1] < 1) {
   $logger->log("Using year day to name $title, $subtitle");
-  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . "." . $subtitle. ".mpg";
+  $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . "." . $subtitle. ".mpg";
   if (-e $name) {
     $logger->log("$name already exists, making uuid");
     $uuid = makeUniqueFilename();
-    $fileformat = "%T." . "S0" . "E".$YearDayNumber . $uuid . ".%S";
+    $fileformat = "%T." . "S00" . "E".$YearDayNumber . $uuid . ".%S";
   }
   else {
-    $fileformat = "%T." . "S0" . "E".$YearDayNumber . ".%S";
+    $fileformat = "%T." . "S00" . "E".$YearDayNumber . ".%S";
   }
 }
 else {
@@ -235,11 +235,11 @@ sub getShowId {
 sub makeUniqueFilename {
 
   $uuid = 0;
-  $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
+  $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
   while (-e $name) {
     $logger->log("$name already exists, will increment \n");
     $uuid++;
-    $name = $destDir . $title . "." . "S0" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
+    $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
   }
     return $uuid;
 }
