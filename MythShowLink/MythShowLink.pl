@@ -41,7 +41,8 @@ if ($usage) {
   print <<EOF;
 $0 usage:
 
-All options are required and must be specified save for --rmsyms
+All options are required and must be specified save for --rmsyms at which point you'll also need 
+to specify the --destdir option
 
 options:
 
@@ -80,10 +81,15 @@ my $logger = JcUtils::Logger::new($logFile, 1000000);
 
 #Let's see if we only want to remove broken symbolic links
 if (defined($rmsyms)) {
-  print "Remove old symlinks \n";
-  removeOldSymLinks();
-  print "Done removing old symlinks \n";
-  exit;
+	if (defined($destDir)) {
+		print "Remove old symlinks \n";
+		removeOldSymLinks();
+		print "Done removing old symlinks \n";
+		exit;
+	}
+	else {
+		die "--rmsyms optin also requires -- destdir option";
+	}
 }
 
 #Check if all arguments have been specified
