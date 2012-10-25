@@ -20,7 +20,7 @@ our $usage;
 our $title;
 our $subtitle;
 our $rmsyms;
-our $showid;
+our $seriesId;
 our $verbose;
 our $apikey = "620DF64ADBA0979A"; #Needed for TVDB queries, you'll need to get your own :-)
 our $language = "en";
@@ -141,13 +141,13 @@ our $noentrydb = JcUtils::FileDB::new($logger, $NoEntryDB);
 $logger->log("Starting TVDB search for $title, $subtitle");
 
 #Is the title in the local database
-$showid = getShowId($title);
-if ($showid > 1) {
-  $logger->log("Found $showid for $title in local corrected DB");
+$seriesId = getSeriesId($title);
+if ($seriesId > 1) {
+  $logger->log("Found $seriesId for $title in local corrected DB");
   my $tmpTitle;
-  $tmpTitle = $tvdb->getSeriesName($showid, 0);
+  $tmpTitle = $tvdb->getSeriesName($seriesId, 0);
   if (!defined($tmpTitle)) {
-    $logger->log("TVDB did not return a valid title for $showid");
+    $logger->log("TVDB did not return a valid title for $seriesId");
   }
   else {
   	$title = $tmpTitle;
@@ -199,14 +199,14 @@ exit;
 #In some cases the show title returned form TVDB is slightly different
 #than what MythTV has for the name.  We keep a user maintained file with those differences
 #and must now check to see if this show has an entry.  If it does, we'll use the title as
-#returned form the TVDB showid.
+#returned form the TVDB seriesId.
 #Args: title
-#Return: showid, if found
+#Return: seriesId, if found
 #Return: 0, if not found
-sub getShowId {
+sub getSeriesId {
 
   my $showName = $_[0];
-  my $showid;
+  my $seriesId;
   #$showName =~ tr/A-Z/a-z/;
   
   my @results;
@@ -216,13 +216,13 @@ sub getShowId {
   
   if (@results == 1 ) {
   	$entry = $db->fetch($results[0]);
-  	$showid = $entry->{showId};
-  	if ($showid == 0) {
-  		$logger->warn->log("Entry $showName with db UUID $entry->{UUID} was 0, please update with correct showid");
+  	$seriesId = $entry->{seriesId};
+  	if ($seriesId == 0) {
+  		$logger->warn->log("Entry $showName with db UUID $entry->{UUID} was 0, please update with correct seriesId");
   		return 0;
   	}
   	else {
-  		return $showid;
+  		return $seriesId;
   	}
   }
   
@@ -231,7 +231,6 @@ sub getShowId {
   	return 0;
   }
   
-
 }
 
 #Make Unique Filename
@@ -302,15 +301,32 @@ sub getSeasonEpisode {
   my $subtitle = $_[1];
   my $numepisodes;
   my $numseasons;
+  my $seriesId;
   
-  if (!defined($subtitle)) {
+  if ($subtitle eq '') {
   	$logger->warn->log("Subtitle is empty, no reason to look any further");
   	return (0, 0)
   }
 
   #turn subtitle to all lowercase
-  $subtitle =~ tr/A-Z/a-z/;
+  #$subtitle =~ tr/A-Z/a-z/;
+  
+#  my $seriesId = $tvdb->getPossibleSeriesId($title, 0);
+#  
+#    foreach $key (keys $seriesId){
+#    	my $hold = $seriesId->{$key};
+#    	print "$key: \n";
+#    	foreach $okey (keys $hold) {
+#    		print "$okey $hold->{$okey} \n";
+#    	}
+#    }
+#    
+#    my $count = keys $seriesId;
+#    
+#    print "Possible Seriesid: $count \n";
 
+
+  $seriesId = $tvdb->getSeriesId($title, 0);
   $numseasons = $tvdb->getMaxSeason($title, 0);
   #TODO: At times, TVDB can return the year (2010) on the getMaxSeason call,  Later in the code
   #getMaxEpisode will return undefined for the year and the loop will exit; however, this is
@@ -321,11 +337,11 @@ sub getSeasonEpisode {
   	unless (@results >= 1 ) {
 	  	$db->create({
 	  		'title'	=> $title,
-	  		'showId'	=> 0
+	  		'seriesId'	=> 0
 	  	});
   	}
 	$logger->warn->log("TVDB did not return any seasons for $title");
-    $logger->warn->log("Possible name mismatch between MythTV and the TVDB, check it out and add showId enty to $dataBase");
+    $logger->warn->log("Possible name mismatch between MythTV and the TVDB, check it out and add seriesId enty to $dataBase");
 	return(0, 0);
   }
 
@@ -356,11 +372,30 @@ sub getSeasonEpisode {
   $logger->log("Could not find $title, $subtitle in the TVDB");
   
   #Let's make an entry in the DB so we can check TVDB at another time.
+  my @noentryResult = $noentrydb->find('title', $title);
+  
+  if (@noentryResult == 0) {
+  	$noentrydb->create({
+  		'title'	=> $title,
+  		'subTitle'	=> $subtitle,
+  		'seriesId'	=> $seriesId
+  	});
+  }
+  else {
+  	foreach $y (@noentryResult) {
+	  	my $entry = $noentrydb->fetch($y);
+	  	if ($entry->{subTitle} eq $subtitle) {
+	  		return (0, 0);
+	  	}
+  	}
+  }
+  
   $noentrydb->create({
   		'title'	=> $title,
   		'subTitle'	=> $subtitle,
-  		'showId'	=> 0
-  	});
+  		'seriesId'	=> $seriesId
+  });
+  	
   return (0, 0);
 
 }
