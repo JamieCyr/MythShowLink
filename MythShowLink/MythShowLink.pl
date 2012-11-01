@@ -110,6 +110,8 @@ unless (-e $destDir) {
 #Create year day for filename, should it be needed
 $year = substr($starttime, 0, 4);
 $month = substr($starttime, 4, 2);
+#Time::Local says months are 0..11
+$month -= 1;
 $day = substr($starttime, 6, 2);
 $showtime = timelocal(0,0,0,$day,$month,$year);
 $YearDayNumber = localtime($showtime)->yday();
