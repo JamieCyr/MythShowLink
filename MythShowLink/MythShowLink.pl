@@ -310,24 +310,6 @@ sub getSeasonEpisode {
   	return (0, 0)
   }
 
-  #turn subtitle to all lowercase
-  #$subtitle =~ tr/A-Z/a-z/;
-  
-#  my $seriesId = $tvdb->getPossibleSeriesId($title, 0);
-#  
-#    foreach $key (keys $seriesId){
-#    	my $hold = $seriesId->{$key};
-#    	print "$key: \n";
-#    	foreach $okey (keys $hold) {
-#    		print "$okey $hold->{$okey} \n";
-#    	}
-#    }
-#    
-#    my $count = keys $seriesId;
-#    
-#    print "Possible Seriesid: $count \n";
-
-
   $seriesId = $tvdb->getSeriesId($title, 0);
   $numseasons = $tvdb->getMaxSeason($title, 0);
   #TODO: At times, TVDB can return the year (2010) on the getMaxSeason call,  Later in the code
@@ -390,14 +372,13 @@ sub getSeasonEpisode {
 	  		return (0, 0);
 	  	}
   	}
-  }
-  
-  $noentrydb->create({
+  	$noentrydb->create({
   		'title'	=> $title,
   		'subTitle'	=> $subtitle,
   		'seriesId'	=> $seriesId
-  });
-  	
+ 	});
+  }
+  
   return (0, 0);
 
 }
