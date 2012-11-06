@@ -82,26 +82,25 @@ my $logger = JcUtils::Logger::new($logFile, 1000000);
 #Let's see if we only want to remove broken symbolic links
 if (defined($rmsyms)) {
 	if (defined($destDir)) {
-		print "Remove old symlinks \n";
 		removeOldSymLinks();
-		print "Done removing old symlinks \n";
 		exit;
 	}
 	else {
-		die "--rmsyms optin also requires -- destdir option";
+		$logger->error->log("--rmsyms option also requires -- destdir option, going to die");
+		die "--rmsyms option also requires -- destdir option";
 	}
 }
 
 #Check if all arguments have been specified
 if (!defined($chanid) || !defined($starttime) || !defined($title) || !defined($subtitle) || !defined($destDir)) {
-  $logger->log("All arguments were not defined");
+  $logger->error->log("All arguments were not defined, going to die");
   die "All arguments must be defined";
 }
 
 #Does the destination directory exist, make it if we can
 unless (-e $destDir) {
 	unless (mkdir $destDir, 0775) {
-		$logger->error->log("Could not create $destDir $!");
+		$logger->error->log("Could not create $destDir $!, going to die");
 		die "Could not create $destDir $! \n";
 	}
 	$logger->warn->log("Had to create destination directory $destDir");
@@ -127,7 +126,7 @@ unless (-e $tvdbDb){
 		$dir .= $token . "/";
 	}
 	unless (-w $dir){
-		$logger->error->log("Can not write to $dir");
+		$logger->error->log("Can not write to $dir, going to die");
 		die ("Can not write to $dir");
 	}
 }
@@ -353,6 +352,11 @@ sub removeOldSymLinks {
   my $zcount = 0;
 
   $logger->log("Removing Old Symbolic Links");
+  
+  unless (-e $destDir) {
+  	$logger->error->log("$destDir does not exist, will not attempt to remove old symlinks");
+  	return 0;
+  }
 
   #Not sure why we have to change dirs here, it seems readdir() does not return the full path name, or something.
   chdir($destDir) || die "Faild to change dir $!";
@@ -373,4 +377,5 @@ sub removeOldSymLinks {
   $logger->log("found $lcount links and removed $zcount \n");
 
   closedir(VID);
+  return 1;
 }
