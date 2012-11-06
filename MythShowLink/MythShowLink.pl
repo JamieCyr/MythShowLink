@@ -191,7 +191,7 @@ $logger->log("Finished TVDB search for $title, $subtitle");
 
 
 #remove old sym links
-#removeOldSymLinks();
+removeOldSymLinks();
 
 $logger->closeLog();
 
@@ -249,45 +249,6 @@ sub makeUniqueFilename {
     $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . $uuid . "." . $subtitle. ".mpg";
   }
     return $uuid;
-}
-
-#This is no longer used
-#show name, season, episode
-sub updateShowFile {
-
-  my $backfile = $dataBase . ".bak";
-
-  my $showName = $_[0];
-  my $season = $_[1];
-  my $episode = $_[2];
-
-  unless (open(BACKFILE, ">$backfile")) {
-    die "Could not open $backfile \n";
-  }
-  
-  unless (open(SHOWFILE, "$dataBase")) {
-      die "Could not open $dataBase \n";
-    }
-
-    while (<SHOWFILE>) {
-	chomp;
-	@fields = split(/:/, $_);
-	
-	if ($fields[0] eq $showName) {
-	  my $entry = $showName . ":" . $season . ":" . $episode;
-	  print BACKFILE $entry;
-	}
-	else {
-	  print BACKFILE $_;
-	}
-    }
-
-    close(BACKFILE);
-    close(SHOWFILE);
-
-    unlink($dataBase) || die "could not delete $dataBase \n";
-    rename($backfile, $dataBase) || die "could not rename $backfile \n";
-
 }
 
 #Get Season and Episode
