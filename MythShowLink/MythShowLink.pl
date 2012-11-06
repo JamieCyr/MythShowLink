@@ -178,9 +178,11 @@ else {
 
 if (defined($fileformat)) {
   $logger->log("File format for naming the file is: $fileformat");
-  @args = ("perl", "/usr/local/bin/mythlink.pl", "--dest", $destDir, "--starttime", $starttime, "--chanid", $chanid, "--underscores", "--format", $fileformat);
-  #system(@args);
-  $logger->log("Completed naming the file");
+  #@args = ("perl", "/usr/local/bin/mythlink.pl", "--dest", $destDir, "--starttime", $starttime, "--chanid", $chanid, "--underscores", "--format", $fileformat);
+  @args = ("uname", "-a");
+  unless (!system(@args)) {
+  	$logger->error->log("System call error: @args");
+  }
 }
 else {
   $logger->log("There was an error creating the file format");
