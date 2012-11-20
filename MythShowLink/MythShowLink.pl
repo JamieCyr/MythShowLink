@@ -24,7 +24,6 @@ our $seriesId;
 our $verbose;
 our $apikey = "620DF64ADBA0979A"; #Needed for TVDB queries, you'll need to get your own :-)
 our $language = "en";
-our $fileformat;
 
 # Load the cli options
 GetOptions('chanid=s'		=> \$chanid,
@@ -106,14 +105,6 @@ unless (-e $destDir) {
 	$logger->warn->log("Had to create destination directory $destDir");
 }
 
-#Create year day for filename, should it be needed
-$year = substr($starttime, 0, 4);
-$month = substr($starttime, 4, 2);
-#Time::Local says months are 0..11
-$month -= 1;
-$day = substr($starttime, 6, 2);
-$showtime = timelocal(0,0,0,$day,$month,$year);
-$YearDayNumber = localtime($showtime)->yday();
 
 #before we create a TVDB object we need to make sure that the db can be created in the specified directory. 
 unless (-e $tvdbDb){
@@ -134,62 +125,24 @@ unless (-e $tvdbDb){
 #create the TVDB object.
 our $tvdb = TVDB::API::new($apikey, $language, $tvdbDb);
 
-#Create the DB object
+#Create the DB objects
 our $db = JcUtils::FileDB::new($logger, $dataBase);
 our $noentrydb = JcUtils::FileDB::new($logger, $NoEntryDB);
 
-#Announce we're starting this process
-$logger->log("Starting TVDB search for $title, $subtitle");
+#Let's try to make the link with what the user provided
+makeLink($starttime, $chanid, $title, $subtitle);
 
-#Is the title in the local database
-$seriesId = getSeriesId($title);
-if ($seriesId > 1) {
-  $logger->log("Found $seriesId for $title in local corrected DB");
-  my $tmpTitle;
-  $tmpTitle = $tvdb->getSeriesName($seriesId, 0);
-  if (!defined($tmpTitle)) {
-    $logger->log("TVDB did not return a valid title for $seriesId");
-  }
-  else {
-  	$title = $tmpTitle;
-  }
+#Perform some house keeping
+
+#Look at the No Entry DB and see if the user added a showid or if perhaps the TVDB has been updated
+#and now contains new show information
+
+while ($noentrydb->hasMoreEntries()) {
+	my $record = {};
+	$record = $noentrydb->getNext();
+	#here I was
+	
 }
-
-#See if the TVDB has the season episode numbers
-@seasonEpisode = getSeasonEpisode($title, $subtitle);
-
-
-if ($seasonEpisode[0] < 1 || $seasonEpisode[1] < 1) {
-  $logger->log("Using year day to name $title, $subtitle");
-  $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . "." . $subtitle. ".mpg";
-  if (-e $name) {
-    $logger->log("$name already exists, making uuid");
-    $uuid = makeUniqueFilename();
-    $fileformat = "%T." . "S00" . "E".$YearDayNumber . $uuid . ".%S";
-  }
-  else {
-    $fileformat = "%T." . "S00" . "E".$YearDayNumber . ".%S";
-  }
-}
-else {
-  $logger->log("Using info from TVDB to name $title, $subtitle");
-  $fileformat = "%T." . "S".$seasonEpisode[0] . "E".$seasonEpisode[1] . ".%S";
-}
-
-if (defined($fileformat)) {
-  $logger->log("File format for naming the file is: $fileformat");
-  #@args = ("perl", "/usr/local/bin/mythlink.pl", "--dest", $destDir, "--starttime", $starttime, "--chanid", $chanid, "--underscores", "--format", $fileformat);
-  @args = ("uname", "-a");
-  unless (!system(@args)) {
-  	$logger->error->log("System call error: @args");
-  }
-}
-else {
-  $logger->log("There was an error creating the file format");
-}
-
-$logger->log("Finished TVDB search for $title, $subtitle");
-
 
 #remove old sym links
 removeOldSymLinks();
@@ -306,7 +259,7 @@ sub getSeasonEpisode {
 		$logger->log("TVDB return nothing for $title Season $i episode $j");
       }
       else {
-		$episodename =~ tr/A-Z/a-z/;
+		#$episodename =~ tr/A-Z/a-z/;
 		if ($episodename eq $subtitle) {
 		  $logger->log("Found: $episodename in the TVDB");
 		  return($i, $j);
@@ -324,7 +277,10 @@ sub getSeasonEpisode {
   	$noentrydb->create({
   		'title'	=> $title,
   		'subTitle'	=> $subtitle,
-  		'seriesId'	=> $seriesId
+  		'seriesId'	=> $seriesId,
+  		'showId'	=> '',
+  		'chanId'	=> $chanid,
+  		'startTime'	=> $starttime
   	});
   }
   else {
@@ -337,7 +293,10 @@ sub getSeasonEpisode {
   	$noentrydb->create({
   		'title'	=> $title,
   		'subTitle'	=> $subtitle,
-  		'seriesId'	=> $seriesId
+  		'seriesId'	=> $seriesId,
+  		'showId'	=> '',
+  		'chanId'	=> $chanid,
+  		'startTime'	=> $starttime
  	});
   }
   
@@ -381,3 +340,77 @@ sub removeOldSymLinks {
   closedir(VID);
   return 1;
 }
+
+#Args: starttime, chanid, title, subtitle
+sub makeLink {
+	
+	my $seriesId;
+	my $title = $_[2];
+	my $subtitle = $_[3];
+	my $starttime = $_[0];
+	my $chanid = $_[1];
+	my $tmpTitle;
+	my $fileformat;
+	
+	#Announce we're starting this process
+	$logger->log("Starting TVDB search for $title, $subtitle");
+	
+	#Is the title in the local database
+	$seriesId = getSeriesId($title);
+	if ($seriesId > 1) {
+ 		$logger->log("Found $seriesId for $title in local corrected DB");
+		$tmpTitle = $tvdb->getSeriesName($seriesId, 0);
+		if (!defined($tmpTitle)) {
+			$logger->warn->log("TVDB did not return a valid title for $seriesId");
+		}
+		else {
+			$title = $tmpTitle;
+		}
+	}
+	
+	#See if the TVDB has the season episode numbers
+	@seasonEpisode = getSeasonEpisode($title, $subtitle);
+
+
+	if ($seasonEpisode[0] < 1 || $seasonEpisode[1] < 1) {
+		$logger->log("Using year day to name $title, $subtitle");
+		#Create year day for filename
+		my $year = substr($starttime, 0, 4);
+		my $month = substr($starttime, 4, 2);
+		#Time::Local says months are 0..11
+		$month -= 1;
+		my $day = substr($starttime, 6, 2);
+		my $showtime = timelocal(0,0,0,$day,$month,$year);
+		my $YearDayNumber = localtime($showtime)->yday();
+		my $name = $destDir . $title . "." . "S00" . "E" . $YearDayNumber . "." . $subtitle. ".mpg";
+		if (-e $name) {
+			$logger->log("$name already exists, making uuid");
+			$uuid = makeUniqueFilename();
+			$fileformat = "%T." . "S00" . "E".$YearDayNumber . $uuid . ".%S";
+		}
+		else {
+			$fileformat = "%T." . "S00" . "E".$YearDayNumber . ".%S";
+		}
+	}
+	else {
+		$logger->log("Using info from TVDB to name $title, $subtitle");
+		$fileformat = "%T." . "S".$seasonEpisode[0] . "E".$seasonEpisode[1] . ".%S";
+	}
+
+	if (defined($fileformat)) {
+		$logger->log("Making link for: $title, $subtitle with format $fileformat");
+		#@args = ("perl", "/usr/local/bin/mythlink.pl", "--dest", $destDir, "--starttime", $starttime, "--chanid", $chanid, "--underscores", "--format", $fileformat);
+		@args = ("uname", "-a");
+		unless (!system(@args)) {
+			$logger->error->log("System call error: @args");
+			return 0;
+		}
+		$logger->log("Finished TVDB search for $title, $subtitle");
+		return 1;
+	}
+	else {
+		$logger->error->log("File format: $fileformat was not defined");
+		return 1;
+	}
+}
+
